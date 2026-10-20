@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Диагностика Ревизор</title>
+<style>body{font-family:sans-serif;background:#fff;color:#000;padding:16px;font-size:16px} .ok{color:green} .bad{color:red}</style>
+</head>
+<body>
+<h2>Диагностика Ревизор</h2>
+<div id="out"><p>Если виден этот текст — страница грузится.</p></div>
+<script>
+(function () {
+  var out = document.getElementById('out');
+  function line(t, ok) {
+    var p = document.createElement('p');
+    p.className = ok ? 'ok' : 'bad';
+    p.textContent = (ok ? 'OK: ' : 'FAIL: ') + t;
+    out.appendChild(p);
+  }
+  line('JavaScript выполняется', true);
+  line('UserAgent: ' + navigator.userAgent, true);
+  try {
+    localStorage.setItem('dg_t', '1');
+    var v = localStorage.getItem('dg_t');
+    localStorage.removeItem('dg_t');
+    line('localStorage: ' + (v === '1' ? 'работает' : 'странно'), v === '1');
+  } catch (e) { line('localStorage ошибка: ' + e, false); }
+  function feat(name, code) {
+    try { new Function(code); line(name + ' поддерживается', true); }
+    catch (e) { line(name + ' НЕ поддерживается', false); }
+  }
+  feat('?. (optional chaining)', 'return ({}).a?.b');
+  feat('?? (nullish)', 'return null ?? 1');
+  feat('async/await', 'return (async function(){})()');
+  line('matchAll: ' + (typeof String.prototype.matchAll === 'function' ? 'есть' : 'НЕТ'), typeof String.prototype.matchAll === 'function');
+  line('fetch: ' + (typeof fetch === 'function' ? 'есть' : 'НЕТ'), typeof fetch === 'function');
+  line('serviceWorker: ' + (typeof navigator.serviceWorker !== 'undefined' ? 'есть' : 'НЕТ'), true);
+  fetch('./app.js', { cache: 'no-store' }).then(function (r) {
+    return r.text().then(function (t) {
+      line('app.js грузится: статус ' + r.status + ', размер ' + t.length, r.status === 200 && t.length > 10000);
+      var hasNew = t.indexOf('APP_VERSION') !== -1;
+      var m = t.match(/APP_VERSION = '([^']+)'/);
+      line('версия app.js: ' + (m ? m[1] : 'не найдена'), !!m);
+      void hasNew;
+    });
+  }).catch(function (e) { line('app.js НЕ грузится: ' + e, false); });
+})();
+</script>
+</body>
+</html>

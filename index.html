@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ревизор — пересчёт ревизии</title>
+<meta name="theme-color" content="#7c3aed">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ревизор">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- HOME -->
+  <section id="view-home" class="view">
+    <header class="topbar">
+      <div class="logo">🧾 Ревизор</div>
+      <div class="top-actions">
+        <label class="accent-picker" title="Акцентный цвет">
+          <input type="color" id="accentInput" value="#7c3aed">
+          <span>🎨</span>
+        </label>
+      </div>
+    </header>
+    <div class="card welcome">
+      <div>
+        <h1>Добро пожаловать!<br>Продолжим работу?</h1>
+        <p class="muted">Загрузите PDF из 1С — Акт ревизии, идите по залу и вбивайте факт. Всё считается офлайн, на телефоне.</p>
+      </div>
+      <button class="btn primary" id="btnFastStart">→ Быстрый старт</button>
+    </div>
+
+    <div class="card">
+      <h2>📋 Начать пересчёт</h2>
+      <p class="muted">Перейдите к экрану пересчёта, загрузите PDF и начните сравнение план / факт.</p>
+      <button class="btn primary block" id="btnGoRecount">→ Перейти к пересчёту</button>
+    </div>
+
+    <div class="card">
+      <h2>❓ Как пользоваться</h2>
+      <ol class="how">
+        <li>1С → Отчёты → Акт Ревизии → Печать → Microsoft Print to PDF</li>
+        <li>Скиньте файл на телефон</li>
+        <li>Здесь: Меню → Загрузить PDF → выбрать файл → ОК</li>
+        <li>Вбивайте факт. <span class="dot g"></span> сошлось, <span class="dot r"></span> недостача, <span class="dot b"></span> излишек</li>
+        <li>Меню → Итог → Меню → Скачать PDF (имя → группа → кто считал) → печать</li>
+      </ol>
+      <div class="row">
+        <button class="btn ghost" id="btnDemo">Загрузить демо (5 поз.)</button>
+        <button class="btn ghost" id="btnContinue">Продолжить последнее</button>
+      </div>
+    </div>
+    <p class="foot muted">PWA • офлайн • без сервера • <span id="appVer"></span></p>
+  </section>
+
+  <!-- RECOUNT -->
+  <section id="view-recount" class="view hidden">
+    <header class="recount-head">
+      <button class="btn ghost sm" id="btnBack">←</button>
+      <div class="title">Ревизор — Пересчёт</div>
+      <div class="count-badge" id="countBadge">0</div>
+    </header>
+    <div class="search-wrap">
+      <input id="search" type="search" placeholder="Поиск... (название или код)" autocomplete="off">
+      <button id="btnVoice" title="Голосовой поиск">🎤</button>
+      <button id="btnClearSearch" title="Очистить">×</button>
+    </div>
+    <div id="metaLine" class="meta-line muted"></div>
+    <div id="progress" class="progress hidden">
+      <div class="progress-top"><span id="progressText">0/0</span><span id="progressSums"></span></div>
+      <div class="progress-bar"><div id="progressFill"></div></div>
+    </div>
+    <div id="list" class="list"></div>
+    <div id="emptyState" class="empty hidden">
+      <p>Пока пусто.<br>Нажмите <b>Меню → Загрузить PDF</b>.</p>
+      <button class="btn primary" id="btnEmptyLoad">Загрузить PDF</button>
+    </div>
+
+    <div class="fab-wrap">
+      <button id="btnTorch" class="fab" title="Фонарик">🔦</button>
+      <button id="btnMenu" class="fab menu">🗂 Меню</button>
+    </div>
+    <div id="menuPop" class="menu-pop hidden">
+      <button data-act="load">📥 Загрузить PDF</button>
+      <button data-act="finish">✅ Завершить</button>
+      <button data-act="export">📤 Скачать PDF</button>
+      <button data-act="save">💾 Сохранить сессию</button>
+      <button data-act="sessions">🗂 Управление сессиями</button>
+      <button data-act="total">📊 Итог</button>
+      <button data-act="clear" class="danger">🧹 Очистить пересчёт</button>
+    </div>
+    <input type="file" id="fileInput" accept="application/pdf,.pdf" class="hidden">
+    <video id="torchVideo" class="hidden" playsinline muted></video>
+  </section>
+</div>
+
+<!-- MODALS -->
+<div id="modalBack" class="modal-back hidden">
+  <div class="modal" id="modalBox"></div>
+</div>
+
+<!-- PRINT AREA -->
+<div id="printArea" class="hidden"></div>
+
+<!-- тяжёлые библиотеки грузятся лениво, только когда понадобятся (PDF/печать) -->
+<script src="app.js" defer></script>
+<script>
+(function () {
+  var ios = /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+  var sa = false;
+  try { sa = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; } catch (e) {}
+  if (ios && sa && 'serviceWorker' in navigator) {
+    // чистка битого воркера в значке: выполняется раньше всего остального
+    try {
+      navigator.serviceWorker.getRegistrations().then(function (rs) {
+        for (var i = 0; i < rs.length; i++) { try { rs[i].unregister(); } catch (e) {} }
+      }).catch(function () {});
+    } catch (e) {}
+  }
+  if ((location.protocol === 'http:' || location.protocol === 'https:') && 'serviceWorker' in navigator && !(ios && sa)) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Обновление Ревизор</title>
+<style>body{font-family:sans-serif;background:#14141c;color:#fff;padding:24px;font-size:17px;text-align:center}</style>
+</head>
+<body>
+<p>Чищу старую версию...<br>Сейчас откроется свежая.</p>
+<script>
+(function () {
+  function go() { location.replace('./'); }
+  function clearCaches() {
+    try {
+      if (window.caches && caches.keys) {
+        caches.keys().then(function (ks) {
+          return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+        }).then(go).catch(go);
+        return;
+      }
+    } catch (e) {}
+    go();
+  }
+  try {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (rs) {
+        var ps = rs.map(function (r) { try { return r.unregister(); } catch (e) { return null; } });
+        return Promise.all(ps);
+      }).then(clearCaches).catch(clearCaches);
+      return;
+    }
+  } catch (e) {}
+  clearCaches();
+  setTimeout(go, 4000);
+})();
+</script>
+</body>
+</html>
